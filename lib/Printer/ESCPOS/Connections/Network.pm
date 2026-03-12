@@ -5,8 +5,15 @@ package Printer::ESCPOS::Connections::Network;
 
 # PODNAME: Printer::ESCPOS::Connections::Network
 # ABSTRACT: Network Connection Interface for L<Printer::ESCPOS>
-# COPYRIGHT
-# VERSION
+#
+# This file is part of Printer-ESCPOS
+#
+# This software is copyright (c) 2017 by Shantanu Bhadoria.
+#
+# This is free software; you can redistribute it and/or modify it under
+# the same terms as the Perl 5 programming language system itself.
+#
+our $VERSION = '1.006'; # VERSION
 
 # Dependencies
 
@@ -16,32 +23,18 @@ with 'Printer::ESCPOS::Roles::Connection';
 
 use IO::Socket;
 
-=attr deviceIP
 
-Contains the IP address of the device when its a network printer. The module creates IO:Socket::INET object to connect
-to the printer. This can be passed in the constructor.
+has deviceIP => ( is => 'ro', );
 
-=cut
-
-has deviceIP => (
-  is  => 'ro',
-);
-
-=attr devicePort
-
-Contains the network port of the device when its a network printer. The module creates IO:Socket::INET object to connect
-to the printer. This can be passed in the constructor.
-
-=cut
 
 has devicePort => (
-  is      => 'ro',
-  default => '9100',
+    is      => 'ro',
+    default => '9100',
 );
 
 has _connection => (
-    is         => 'lazy',
-    init_arg   => undef,
+    is       => 'lazy',
+    init_arg => undef,
 );
 
 sub _build__connection {
@@ -49,29 +42,24 @@ sub _build__connection {
     my $printer;
 
     $printer = IO::Socket::INET->new(
-        Proto     => "tcp",
-        PeerAddr  => $self->deviceIP,
-        PeerPort  => $self->devicePort,
-        Timeout   => 1,
+        Proto    => "tcp",
+        PeerAddr => $self->deviceIP,
+        PeerPort => $self->devicePort,
+        Timeout  => 1,
     ) or die " Can't connect to printer";
 
     return $printer;
 }
 
-=method read
-
-Read Data from the printer
-
-=cut
 
 sub read {
-    my ($self, $question, $bytes) = @_;
+    my ( $self, $question, $bytes ) = @_;
     my $data;
     $bytes ||= 2;
 
-    say unpack("H*",$question);
-    $self->_connection->write( $question );
-    $self->_connection->read($data, $bytes);
+    say unpack( "H*", $question );
+    $self->_connection->write($question);
+    $self->_connection->read( $data, $bytes );
 
     return $data;
 }
@@ -80,3 +68,46 @@ no Moo;
 __PACKAGE__->meta->make_immutable;
 
 1;
+
+__END__
+
+=pod
+
+=head1 NAME
+
+Printer::ESCPOS::Connections::Network - Network Connection Interface for L<Printer::ESCPOS>
+
+=head1 VERSION
+
+version 1.006
+
+=head1 ATTRIBUTES
+
+=head2 deviceIP
+
+Contains the IP address of the device when its a network printer. The module creates IO:Socket::INET object to connect
+to the printer. This can be passed in the constructor.
+
+=head2 devicePort
+
+Contains the network port of the device when its a network printer. The module creates IO:Socket::INET object to connect
+to the printer. This can be passed in the constructor.
+
+=head1 METHODS
+
+=head2 read
+
+Read Data from the printer
+
+=head1 AUTHOR
+
+Shantanu Bhadoria <shantanu@cpan.org> L<https://www.shantanubhadoria.com>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2017 by Shantanu Bhadoria.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut
