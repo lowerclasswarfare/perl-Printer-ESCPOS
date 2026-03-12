@@ -93,34 +93,6 @@ sub write {
     return $bytes_sent;
 }
 
-#sub print {
-#    my ( $self, $raw ) = @_;
-#    my @chunks;
-#
-#    my $buffer = $self->_buffer;
-#    if ( defined $raw ) {
-#        $buffer = $raw;
-#    }
-#    else {
-#        $self->_buffer('');
-#    }
-#
-#    my $n = 8;    # Size of each chunk in bytes
-#    $n = 64 if ( $self->serialOverUSB );
-#
-#    @chunks = unpack "a$n" x ( ( length($buffer) / $n ) - 1 ) . "a*", $buffer;
-#    for my $chunk (@chunks) {
-#        $self->_connection->write($chunk);
-#        if ( $self->serialOverUSB ) {
-#            $self->_connection->read();
-#        }
-#        else {
-#            usleep(10000)
-#              ; # Serial Port is annoying, it doesn't tell you when it is ready to get the next chunk
-#        }
-#    }
-#}
-
 no Moo;
 __PACKAGE__->meta->make_immutable;
 

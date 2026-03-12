@@ -245,21 +245,6 @@ sub printAreaWidth {
     $self->driver->write( "\x1D" . 'W' . chr($nL) . chr($nH) );
 }
 
-#sub printAreaWidth {
-#    my ( $self, $width ) = @_;
-#
-#    confess
-#"Width must be a integer between 0 and 65535 in printAreaWidth(). Invalid value '$width'.
-#        Usage: \n\t\$device->printer->printAreaWidth(\$width)\n"
-#      unless ( isint $width == 1 and $width <= 65535 and $width >= 1 );
-#
-#    my $nH = $width >> 8;
-#    my $nL = $width - ( $nH << 8 );
-#
-#    $self->driver->write( _GS . 'W' . chr($nL) . chr($nH) );
-#}
-
-
 sub tabPositions {
     my ( $self, @positions ) = @_;
     my $pos = '';

@@ -47,27 +47,6 @@ sub print {
     }
 }
 
-#sub print {
-#    my ( $self, $raw ) = @_;
-#    my @chunks;
-#
-#    my $printString;
-#    if ( defined $raw ) {
-#        $printString = $raw;
-#    }
-#    else {
-#        $printString = $self->_buffer;
-#        $self->_buffer('');
-#    }
-#    my $n = 64;    # Size of each chunk in bytes
-#
-#    @chunks = unpack "a$n" x ( ( length($printString) / $n ) - 1 ) . "a*",
-#      $printString;
-#    for my $chunk (@chunks) {
-#        $self->_connection->write($chunk);
-#    }
-#}
-
 1;
 
 __END__

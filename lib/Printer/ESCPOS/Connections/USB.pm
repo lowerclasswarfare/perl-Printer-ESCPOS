@@ -96,28 +96,6 @@ sub print {
     return $sent;
 }
 
-#sub print {
-#    my ( $self, $raw ) = @_;
-#    my @chunks;
-#
-#    my $buffer = $self->_buffer;
-#    if ( defined $raw ) {
-#        $buffer = $raw;
-#    }
-#    else {
-#        $self->_buffer('');
-#    }
-#
-#    my $n = 2**14;    # Size of each chunk in bytes
-#    @chunks = unpack "a$n" x ( ( length($buffer) / $n ) - 1 ) . "a*", $buffer;
-#    for my $chunk (@chunks) {
-#        $self->_connection->bulk_write( $self->endPoint, $chunk,
-#            $self->timeout );
-#        usleep(10000)
-#          ; # USB Port is sometimes annoying, it doesn't always tell you when it is ready to get the next chunk
-#    }
-#}
-
 no Moo;
 __PACKAGE__->meta->make_immutable;
 

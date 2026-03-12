@@ -47,15 +47,6 @@ sub _build__connection {
     return $printer;
 }
 
-#sub _build__connection {
-#    my ($self) = @_;
-#    my $printer;
-#
-#    $printer = new IO::File ">>" . $self->deviceFilePath;
-#
-#    return $printer;
-#}
-
 sub write {
     my ($self, $chunk) = @_;
 
