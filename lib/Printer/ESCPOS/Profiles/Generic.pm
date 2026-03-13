@@ -44,21 +44,23 @@ use constant {
 sub init {
     my ($self) = @_;
 
-    $self->driver->print( _ESC . '@' );
+    $self->driver->write( _ESC . '@' );
 }
 
 
 sub enable {
     my ( $self, $n ) = @_;
 
+    $n ||= 0;
+
+    confess "Invalid parameter please use '0' or '1'";
+        unless ($n == 1 or $n == 0);
+
     if ( $n == 1 ) {
-        $self->driver->print( _ESC . '=' . chr(1) );
+        $self->driver->write( _ESC . '=' . chr(1) );
     }
-    elsif ( $n == 0 ) {
-        $self->driver->print( _ESC . '=' . chr(2) );
-    }
-    else {
-        confess "Invalid parameter please use '0' or '1'";
+    else ( $n == 0 ) {
+        $self->driver->write( _ESC . '=' . chr(2) );
     }
 }
 
@@ -125,8 +127,8 @@ sub image {
         carp
 'Width is greater than 512 pixels and could be truncated at print time';
     }
-    if ( $img->height > 255 ) {
-        confess 'Height is greater than 255 pixels';
+    if ( $img->height > 65535 ) {
+        confess 'Height is greater than 65535 pixels';
     }
 
     my @padding = $self->_pad_image_size( $img->width );
@@ -179,6 +181,7 @@ sub image {
     $self->_print_image( $pixelLine, \@imageSize );
 }
 
+
 sub _pad_image_size {
     my ( $self, $width ) = @_;
 
@@ -196,40 +199,49 @@ sub _pad_image_size {
     }
 }
 
+
 sub _print_image {
     my ( $self, $pixelLine, $imageSize ) = @_;
 
+    # GS v 0 0 (Raster bit image)
     $self->driver->write( _GS . "v\x30\x00" );
-    my $buffer = sprintf(
-        "%02X%02X%02X%02X",
-        (
-            ( ( $imageSize->[0] / $imageSize->[1] ) / 8 ), 0, $imageSize->[1],
-            0
-        )
-    );
-    $self->driver->write( pack( "H*", $buffer ) );
 
-    $buffer = "";
-    my $i     = 0;
-    my $count = 0;
+    # Calculate xL, xH (Width in bytes) and yL, yH (Height in pixels)
+    my $width_bytes = ( $imageSize->[0] / $imageSize->[1] ) / 8;
+    my $height_px   = $imageSize->[1];
+
+    my $xL = $width_bytes % 256;
+    my $xH = int( $width_bytes / 256 );
+    my $yL = $height_px % 256;
+    my $yH = int( $height_px / 256 );
+
+    # Pack them as 4 hex bytes: xL xH yL yH
+    my $size_buffer = pack( "C4", $xL, $xH, $yL, $yH );
+    $self->driver->write($size_buffer);
+
+    my $buffer = "";
+    my $i      = 0;
+    my $count  = 0;
     while ( $i < length($pixelLine) ) {
         my $octalString = oct( "0b" . substr( $pixelLine, $i, 8 ) );
-        $buffer .= sprintf( "%02X", $octalString );
+        $buffer .= pack( "C", $octalString ); # Use pack C instead of sprintf hex strings
         $i += 8;
         $count++;
-        if ( $count % 4 == 0 ) {
-            $self->driver->write( pack( "H*", $buffer ) );
+        if ( $count % 128 == 0 ) { # Increased flush size for speed
+            $self->driver->write($buffer);
             $buffer = "";
             $count  = 0;
         }
     }
+    $self->driver->write($buffer) if length $buffer;
 }
+
 
 sub printAreaWidth {
     my ( $self, $width ) = @_;
 
     # Set a default width if no width is provided (standard 80mm)
-    $width //= 512;
+    $width ||= 512;
 
     # 1. Validation: Make sure it's defined and looks like a positive integer
     unless ( defined $width && $width =~ /^\d+$/ && $width >= 1 && $width <= 65535 ) {
@@ -242,8 +254,9 @@ sub printAreaWidth {
     my $nL = $width % 256;
 
     # 3. Write: Use our new standard driver 'write' method
-    $self->driver->write( "\x1D" . 'W' . chr($nL) . chr($nH) );
+    $self->driver->write( _GS . 'W' . chr($nL) . chr($nH) );
 }
+
 
 sub tabPositions {
     my ( $self, @positions ) = @_;
@@ -268,9 +281,31 @@ sub tab {
 
 
 sub lf {
-    my ($self) = @_;
+    my ($self, $n) = @_;
+    
+    $n ||= 1;
 
-    $self->driver->write("\n");
+    if ( $n ==1 ) {
+        $self->driver->write("\n");
+        return;
+    }
+
+    # If a number is provided,use ESC d n for multi line feed.
+    # Clamp to 255 to prevent ESC/POS overflow.
+    $n = 255 if $n > 255;
+    $self->driver->write(_ESC . "d" . chr($n));
+}
+
+
+sub dotFeed { 
+    my ($self, $n) = @_;
+
+    $n ||= 1;
+
+    # Same deal as linefeed. We have an option for multi dot feed.
+    # Clamp to 255 to prevent ESC/POS overflow.
+    $n = 255 if $n > 255;
+    $self->driver->write(_ESC . "J" . chr($n));
 }
 
 
@@ -428,7 +463,7 @@ sub fontHeight {
     my $width = $self->widthStatus;
 
     confess
-"Invalid value for fontHeight '$height'. Use a integer between '0' and '7'.
+    "Invalid value for fontHeight '$height'. Use a integer between '0' and '7'.
         Usage: \n\t\$device->printer->fontHeight(5)\n"
       unless ( isint $height >= 0 and $height <= 7 );
 
@@ -641,15 +676,30 @@ sub printImage {
 
 
 sub cutPaper {
-    my ( $self, %params ) = @_;
-    $params{feed} ||= 0;
+    # Try to emulate python escpos library cut feature.
+    my ($self, $mode, $feed) = @_;
+    $mode ||= 'FULL';
+    $feed //= 1; # use //= for the ability to still pass 0.
 
-    $self->lf();
-    if ( $params{feed} == 0 ) {
-        $self->driver->write( _GS . 'V' . chr(1) );
+    # If feed is false, use printer's internal "Function B" (GS V 66 0)
+    if (!$feed) {
+        $self->driver->write(_GS . 'V' . chr(66) . chr(0));
+        return;
+    }
+
+    # If feed is true (Default), manually feed 6 lines and use internal
+    # "Function A".
+    $self->lf(6);
+
+    my $upper_mode = uc($mode);
+    if ( uc($mode) eq 'PART') {
+        $self->driver->write(_GS . 'V' . chr(0));
+    }
+    elsif ($uppermode eq 'FULL') {
+        $self->driver->write(_GS . 'V' . chr(1));
     }
     else {
-        $self->driver->write( _GS . 'V' . chr(66) . chr(0) );
+        confess "Invalid mode '$mode'. Use 'FULL' or 'PART'";
     }
 
 }
