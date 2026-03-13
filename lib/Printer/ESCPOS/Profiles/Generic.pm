@@ -53,13 +53,13 @@ sub enable {
 
     $n ||= 0;
 
-    confess "Invalid parameter please use '0' or '1'";
+    confess "Invalid parameter please use '0' or '1'"
         unless ($n == 1 or $n == 0);
 
     if ( $n == 1 ) {
         $self->driver->write( _ESC . '=' . chr(1) );
     }
-    else ( $n == 0 ) {
+    elsif ( $n == 0 ) {
         $self->driver->write( _ESC . '=' . chr(2) );
     }
 }
@@ -678,7 +678,8 @@ sub printImage {
 sub cutPaper {
     # Try to emulate python escpos library cut feature.
     my ($self, $mode, $feed) = @_;
-    $mode ||= 'FULL';
+
+    $mode //= 'FULL';
     $feed //= 1; # use //= for the ability to still pass 0.
 
     # If feed is false, use printer's internal "Function B" (GS V 66 0)
@@ -687,15 +688,15 @@ sub cutPaper {
         return;
     }
 
-    # If feed is true (Default), manually feed 6 lines and use internal
+    # If feed is true (Default), manually feed 10 lines and use internal
     # "Function A".
-    $self->lf(6);
+    $self->lf(10);
 
     my $upper_mode = uc($mode);
-    if ( uc($mode) eq 'PART') {
+    if ( $upper_mode eq 'PART') {
         $self->driver->write(_GS . 'V' . chr(0));
     }
-    elsif ($uppermode eq 'FULL') {
+    elsif ($upper_mode eq 'FULL') {
         $self->driver->write(_GS . 'V' . chr(1));
     }
     else {
